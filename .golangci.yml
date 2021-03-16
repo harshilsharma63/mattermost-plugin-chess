@@ -6,7 +6,7 @@ linters-settings:
   gofmt:
     simplify: true
   goimports:
-    local-prefixes: github.com/mattermost/mattermost-starter-template
+    local-prefixes: github.com/harshilsharma63/mattermost-plugin-chess
   golint:
     min-confidence: 0
   govet:
@@ -27,7 +27,6 @@ linters:
     - golint
     - gosec
     - gosimple
-    - govet
     - ineffassign
     - misspell
     - nakedret
