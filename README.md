@@ -1,6 +1,6 @@
 # Daily Chess Puzzle
 ### A Mattermost plugin that shares daily chess puzzles from chess.com directly into chess.com
-#### This plugin is in no way affiliated with chess.com.
+This plugin is in no way affiliated with chess.com.
 
 ## Setup
 
