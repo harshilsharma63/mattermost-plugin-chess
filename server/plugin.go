@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/harshilsharma63/mattermost-plugin-chess/server/chess"
-	"github.com/harshilsharma63/mattermost-plugin-chess/server/puzzle"
 	"github.com/mattermost/mattermost-plugin-api/cluster"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
@@ -19,7 +18,8 @@ import (
 )
 
 const (
-	commandTrigger = "chesspuzzlesubscribe"
+	commandSubscribe = "chesspuzzlesubscribe"
+	commandUnsubscribe = "chesspuzzleunsubscribe"
 
 	keyLastPublishedPuzzle = "last_puzzle_timestamp"
 	keySubscribedChannels = "subscriptions"
@@ -73,7 +73,7 @@ func (p *Plugin) OnActivate() error {
 
 func (p *Plugin) registerCommand() error {
 	return p.API.RegisterCommand(&model.Command{
-		Trigger: commandTrigger,
+		Trigger: commandSubscribe,
 		AutoComplete: true,
 	})
 }
@@ -111,42 +111,14 @@ func (p *Plugin) ensureBot() (string, error) {
 }
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
-	if strings.TrimSpace(args.Command) == "/" + commandTrigger {
+	switch strings.TrimSpace(args.Command) {
+	case "/" + commandSubscribe:
 		return p.executeSubscribe(c, args)
+	case "/" + commandUnsubscribe:
+		return p.executeUnsubscribe(c, args)
+	default:
+		return nil, nil
 	}
-
-	return nil, nil
-
-
-
-	// puzzle, err := chess.Chess{}.GetDailyPuzzle()
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// 	return nil, model.NewAppError("while fetching puzzle", "", nil, err.Error(), 500)
-	// }
-
-	// post := puzzle.ToPost(args.ChannelId, BotUserID)
-	// createdPost, appErr := p.API.CreatePost(post)
-	// if appErr != nil {
-	// 	fmt.Println(appErr.Error())
-	// 	return nil, model.NewAppError("while posting puzzle to channel", "", nil, appErr.Error(), 500)
-	// }
-
-	// _, appErr = p.API.AddReaction(&model.Reaction{
-	// 	UserId: BotUserID,
-	// 	PostId: createdPost.Id,
-	// 	EmojiName: "white_check_mark",
-	// })
-
-	// if appErr != nil {
-	// 	fmt.Println(appErr.Error())
-	// 	return nil, model.NewAppError("while adding reaction on created post", "", nil, appErr.Error(), 500)
-	// }
-
-	// return &model.CommandResponse{
-	// 	Text: "Posted",
-	// 	ChannelId: args.ChannelId,
-	// }, nil
 }
 
 func (p *Plugin) executeSubscribe(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
@@ -171,8 +143,43 @@ func (p *Plugin) executeSubscribe(c *plugin.Context, args *model.CommandArgs) (*
 		return nil, model.NewAppError("", "", nil, err.Error(), 500)
 	}
 
+	puzzle, err := chess.Chess{}.GetDailyPuzzle()
+	if err != nil {
+		return nil, model.NewAppError("", "", nil, err.Error(), 500)
+	}
+
+	puzzle.Post(args.ChannelId, BotUserID, p.API)
+
 	return &model.CommandResponse{
 		Text: "Subscribed successfully.",
+		ChannelId: args.ChannelId,
+	}, nil
+}
+
+func (p *Plugin) executeUnsubscribe(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
+	subscriptions, err := GetSubscribedChannels()
+	if err != nil {
+		return nil, model.NewAppError("", "", nil, err.Error(), 500)
+	}
+
+	if subscriptions == nil {
+		subscriptions = map[string]int{}
+	}
+
+	if _, exists := subscriptions[args.ChannelId]; !exists {
+		return &model.CommandResponse{
+			Text: "Channel is already unsubscribed",
+			ChannelId: args.ChannelId,
+		}, nil
+	}
+
+	delete(subscriptions, args.ChannelId)
+	if err := SetSubscribedChannels(subscriptions); err != nil {
+		return nil, model.NewAppError("", "", nil, err.Error(), 500)
+	}
+
+	return &model.CommandResponse{
+		Text: "Unsubscribed successfully.",
 		ChannelId: args.ChannelId,
 	}, nil
 }
@@ -187,7 +194,7 @@ func (p *Plugin) Run() error {
 	job, err := cluster.Schedule(
 		p.API,
 		"DailyChessPuzzleJob",
-		cluster.MakeWaitForInterval(30 * time.Second),
+		cluster.MakeWaitForInterval(30 * time.Minute),
 		func() {
 			_ = Runner()
 		},
@@ -208,16 +215,6 @@ func Runner() error {
 		return err
 	}
 
-	// lastPublishedPuzzle, err :=  GetLastPublishedPuzzle()
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if lastPublishedPuzzle == puzzle.PublishTime {
-	// 	// new puzzle is not available
-	// 	return nil
-	// }
-
 	subscriptions, err := GetSubscribedChannels()
 	if err != nil {
 		return err
@@ -228,61 +225,16 @@ func Runner() error {
 			continue
 		}
 
-		post := puzzle.ToPost(channelID, BotUserID)
-		createdPost, appErr := API.CreatePost(post)
-		if appErr != nil {
-			fmt.Println(appErr.Error())
+		if err := puzzle.Post(channelID, BotUserID, API); err != nil {
 			continue
 		}
 
 		subscriptions[channelID] = puzzle.PublishTime
-
-		_, appErr = API.AddReaction(&model.Reaction{
-			UserId: BotUserID,
-			PostId: createdPost.Id,
-			EmojiName: "white_check_mark",
-		})
-
-		if appErr != nil {
-			fmt.Println(appErr.Error())
-			continue
-		}
 	}
 
 	_ = SetSubscribedChannels(subscriptions)
 
 	return nil
-}
-
-func GetLastPublishedPuzzle() (int, error) {
-	data, appErr := API.KVGet(keyLastPublishedPuzzle)
-	if appErr != nil {
-		fmt.Println(appErr.Error())
-		return 0, appErr
-	}
-
-	if data == nil {
-		data = []byte("0")
-	}
-
-	var timestamp int
-
-	if err := json.Unmarshal(data, &timestamp); err != nil {
-		fmt.Println(err.Error())
-		return 0, err
-	}
-
-	return timestamp, nil
-}
-
-func SetLastPublishedPuzzle(puzzle puzzle.Puzzle) error {
-	data, err := json.Marshal(puzzle.PublishTime)
-	if err != nil {
-		fmt.Println(err.Error())
-		return err
-	}
-
-	return API.KVSet(keyLastPublishedPuzzle, data)
 }
 
 func GetSubscribedChannels() (map[string]int, error) {

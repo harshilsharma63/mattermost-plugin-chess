@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost-server/v5/plugin"
 )
 
 const (
@@ -47,4 +48,26 @@ func (p Puzzle) ToPost(channelID, userID string) *model.Post {
 		UserId: userID,
 		Message: msg,
 	}
+}
+
+func (p Puzzle) Post(channelID, botUserID string, api plugin.API) error {
+	post := p.ToPost(channelID, botUserID)
+	createdPost, appErr := api.CreatePost(post)
+	if appErr != nil {
+		fmt.Println(appErr.Error())
+		return appErr
+	}
+
+	_, appErr = api.AddReaction(&model.Reaction{
+		UserId: botUserID,
+		PostId: createdPost.Id,
+		EmojiName: "white_check_mark",
+	})
+
+	if appErr != nil {
+		fmt.Println(appErr.Error())
+		return appErr
+	}
+
+	return nil
 }
