@@ -19,8 +19,8 @@ const manifestStr = `
   "support_url": "https://github.com/mattermost/mattermost-plugin-starter-template/issues",
   "release_notes_url": "https://github.com/mattermost/mattermost-plugin-starter-template/releases/tag/v0.1.0",
   "icon_path": "assets/starter-template-icon.svg",
-  "version": "0.1.0",
-  "min_server_version": "5.12.0",
+  "version": "1.0.0",
+  "min_server_version": "5.32.1",
   "server": {
     "executables": {
       "linux-amd64": "server/dist/plugin-linux-amd64",
@@ -28,9 +28,6 @@ const manifestStr = `
       "windows-amd64": "server/dist/plugin-windows-amd64.exe"
     },
     "executable": ""
-  },
-  "webapp": {
-    "bundle_path": "webapp/dist/main.js"
   },
   "settings_schema": {
     "header": "",

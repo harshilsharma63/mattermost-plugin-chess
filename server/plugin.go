@@ -11,19 +11,18 @@ import (
 	"time"
 
 	"github.com/harshilsharma63/mattermost-plugin-chess/server/chess"
+
 	"github.com/mattermost/mattermost-plugin-api/cluster"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
+
 	"github.com/pkg/errors"
 )
 
 const (
-	commandSubscribe = "chesspuzzlesubscribe"
-	commandUnsubscribe = "chesspuzzleunsubscribe"
-
-	keyLastPublishedPuzzle = "last_puzzle_timestamp"
+	commandSubscribe      = "chesspuzzlesubscribe"
+	commandUnsubscribe    = "chesspuzzleunsubscribe"
 	keySubscribedChannels = "subscriptions"
-
 )
 
 var API plugin.API
@@ -41,7 +40,7 @@ type Plugin struct {
 	// setConfiguration for usage.
 	configuration *configuration
 
-	job     *cluster.Job
+	job *cluster.Job
 }
 
 // ServeHTTP demonstrates a plugin that handles HTTP requests by greeting the world.
@@ -73,7 +72,7 @@ func (p *Plugin) OnActivate() error {
 
 func (p *Plugin) registerCommand() error {
 	err := p.API.RegisterCommand(&model.Command{
-		Trigger: commandSubscribe,
+		Trigger:      commandSubscribe,
 		AutoComplete: true,
 	})
 
@@ -83,7 +82,7 @@ func (p *Plugin) registerCommand() error {
 	}
 
 	err = p.API.RegisterCommand(&model.Command{
-		Trigger: commandUnsubscribe,
+		Trigger:      commandUnsubscribe,
 		AutoComplete: true,
 	})
 
@@ -97,7 +96,7 @@ func (p *Plugin) registerCommand() error {
 
 func (p *Plugin) ensureBot() (string, error) {
 	bot := &model.Bot{
-		Username: "chesspuzzlebot",
+		Username:    "chesspuzzlebot",
 		DisplayName: "Chess Puzzle Bot",
 		Description: "For now I'm a friendly bot who posts daily chess puzzzles from chess.com. But one day I'll take over the world 🤫",
 	}
@@ -150,7 +149,7 @@ func (p *Plugin) executeSubscribe(c *plugin.Context, args *model.CommandArgs) (*
 
 	if _, exists := subscriptions[args.ChannelId]; exists {
 		return &model.CommandResponse{
-			Text: "Channel is already subscribed",
+			Text:      "Channel is already subscribed",
 			ChannelId: args.ChannelId,
 		}, nil
 	}
@@ -165,10 +164,10 @@ func (p *Plugin) executeSubscribe(c *plugin.Context, args *model.CommandArgs) (*
 		return nil, model.NewAppError("", "", nil, err.Error(), 500)
 	}
 
-	puzzle.Post(args.ChannelId, BotUserID, p.API)
+	_ = puzzle.Post(args.ChannelId, BotUserID, p.API)
 
 	return &model.CommandResponse{
-		Text: "Subscribed successfully.",
+		Text:      "Subscribed successfully.",
 		ChannelId: args.ChannelId,
 	}, nil
 }
@@ -185,7 +184,7 @@ func (p *Plugin) executeUnsubscribe(c *plugin.Context, args *model.CommandArgs) 
 
 	if _, exists := subscriptions[args.ChannelId]; !exists {
 		return &model.CommandResponse{
-			Text: "Channel is already unsubscribed",
+			Text:      "Channel is already unsubscribed",
 			ChannelId: args.ChannelId,
 		}, nil
 	}
@@ -196,7 +195,7 @@ func (p *Plugin) executeUnsubscribe(c *plugin.Context, args *model.CommandArgs) 
 	}
 
 	return &model.CommandResponse{
-		Text: "Unsubscribed successfully.",
+		Text:      "Unsubscribed successfully.",
 		ChannelId: args.ChannelId,
 	}, nil
 }
@@ -211,7 +210,7 @@ func (p *Plugin) Run() error {
 	job, err := cluster.Schedule(
 		p.API,
 		"DailyChessPuzzleJob",
-		cluster.MakeWaitForInterval(30 * time.Minute),
+		cluster.MakeWaitForInterval(30*time.Minute),
 		func() {
 			_ = Runner()
 		},

@@ -8,30 +8,26 @@ import (
 	"github.com/harshilsharma63/mattermost-plugin-chess/server/puzzle"
 )
 
-const (
-
-)
-
 type Chess struct {
 }
 
 func (c Chess) GetDailyPuzzle() (*puzzle.Puzzle, error) {
 	url := "https://api.chess.com/pub/puzzle"
-  	method := "GET"
+	method := "GET"
 
-  	client := &http.Client {}
-  	req, err := http.NewRequest(method, url, nil)
-  	if err != nil {
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
 		fmt.Println(err.Error())
-    	return nil, err
-  	}
+		return nil, err
+	}
 
 	res, err := client.Do(req)
-  	if err != nil {
+	if err != nil {
 		fmt.Println(err.Error())
-    	return nil, err
-  	}
-  	defer res.Body.Close()
+		return nil, err
+	}
+	defer res.Body.Close()
 
 	var puzzle puzzle.Puzzle
 
@@ -42,5 +38,3 @@ func (c Chess) GetDailyPuzzle() (*puzzle.Puzzle, error) {
 
 	return &puzzle, nil
 }
-
-
