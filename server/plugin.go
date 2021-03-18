@@ -72,10 +72,27 @@ func (p *Plugin) OnActivate() error {
 }
 
 func (p *Plugin) registerCommand() error {
-	return p.API.RegisterCommand(&model.Command{
+	err := p.API.RegisterCommand(&model.Command{
 		Trigger: commandSubscribe,
 		AutoComplete: true,
 	})
+
+	if err != nil {
+		fmt.Println("Failed to register command " + commandSubscribe)
+		return err
+	}
+
+	err = p.API.RegisterCommand(&model.Command{
+		Trigger: commandUnsubscribe,
+		AutoComplete: true,
+	})
+
+	if err != nil {
+		fmt.Println("Failed to register command " + commandUnsubscribe)
+		return err
+	}
+
+	return nil
 }
 
 func (p *Plugin) ensureBot() (string, error) {
